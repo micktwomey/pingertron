@@ -1,0 +1,5 @@
+probes:
+  - protocol: http
+    url: https://www.google.ie/
+  - protocol: icmp
+    hostname: 192.168.4.1

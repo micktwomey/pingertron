@@ -1,0 +1,29 @@
+[tool.poetry]
+name = "pingertron"
+version = "0.1.0"
+description = "Ping Hosts and URLs and keep stats on successes and failures"
+authors = ["Michael Twomey <mick@twomeylee.name>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+httpx = "^0.24.0"
+prometheus-client = "^0.16.0"
+typer = "^0.9.0"
+rich = "^13.3.5"
+pydantic = "^1.10.7"
+opentelemetry-distro = "^0.38b0"
+opentelemetry-instrumentation-httpx = "^0.38b0"
+opentelemetry-exporter-prometheus = "^1.12.0rc1"
+pydantic-yaml = "^1.0.0a2"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+# Turn on namespaces to support opentelementry
+# See https://opentelemetry.io/docs/instrumentation/python/mypy/
+namespace_packages = true
