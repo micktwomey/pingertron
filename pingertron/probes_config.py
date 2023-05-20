@@ -10,15 +10,20 @@ class Protocol(enum.StrEnum):
 
 class HTTPProbe(pydantic.BaseModel):
     protocol: Protocol = Protocol.http
+    name: str | None
     url: str
     method: str = "GET"
     expected_status_code: int = 200
 
+
 class ICMPProbe(pydantic.BaseModel):
     protocol: Protocol = Protocol.icmp
+    name: str | None
     hostname: str
 
+
 Probe = HTTPProbe | ICMPProbe
+
 
 class ProbesConfig(pydantic.BaseModel):
     interval_seconds: float = 60

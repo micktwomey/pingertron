@@ -17,7 +17,15 @@ opentelemetry-distro = "^0.38b0"
 opentelemetry-instrumentation-httpx = "^0.38b0"
 opentelemetry-exporter-prometheus = "^1.12.0rc1"
 pydantic-yaml = "^1.0.0a2"
+psutil = "^5.9.5"
+icmplib = "^3.0.3"
 
+
+[tool.poetry.group.dev.dependencies]
+mypy = "^1.3.0"
+ruff = "^0.0.269"
+black = "^23.3.0"
+pytest = "^7.3.1"
 
 [build-system]
 requires = ["poetry-core"]
@@ -27,3 +35,7 @@ build-backend = "poetry.core.masonry.api"
 # Turn on namespaces to support opentelementry
 # See https://opentelemetry.io/docs/instrumentation/python/mypy/
 namespace_packages = true
+
+
+[tool.poetry.scripts]
+pingertron = 'pingertron.main:app'
