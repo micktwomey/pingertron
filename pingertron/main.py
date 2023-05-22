@@ -23,80 +23,50 @@ async def run_probes(probes: list[Probe]):
     for probe in probes:
         match probe:
             case HTTPProbe():
-                metrics.http_request_count.add(
-                    1,
-                    {
-                        "http.method": probe.method,
-                        "http.url": probe.url,
-                        "http.expected_status_code": probe.expected_status_code,
-                    },
-                )
+                metrics.http_request_count.labels(
+                    method=probe.method,
+                    url=probe.url,
+                    expected_status_code=probe.expected_status_code,
+                ).inc()
+
                 CONSOLE.log("HTTP", probe)
                 async with httpx.AsyncClient() as client:
-                    start = time.monotonic()
-                    response = await client.request(method=probe.method, url=probe.url)
-                    end = time.monotonic()
-                    duration = end - start
+                    with metrics.http_response_duration_summary.labels(
+                        method=probe.method, url=probe.url
+                    ).time():
+                        response = await client.request(
+                            method=probe.method, url=probe.url
+                        )
                     CONSOLE.log("HTTP Response", response)
                     success = response.status_code == probe.expected_status_code
-                    metrics.http_response_count.add(
-                        1,
-                        {
-                            "http.method": probe.method,
-                            "http.url": probe.url,
-                            "http.status_code": response.status_code,
-                            "success": success,
-                        },
-                    )
-                    metrics.http_response_duration_histogram.record(
-                        duration,
-                        {
-                            "http.method": probe.method,
-                            "http.url": probe.url,
-                            "http.status_code": response.status_code,
-                            "success": response.status_code
-                            == probe.expected_status_code,
-                        },
-                    )
-                    metrics.probe_finished_count.add(
-                        1,
-                        {
-                            "success": success,
-                            "protocol": probe.protocol,
-                        },
-                    )
+                    metrics.http_response_count.labels(
+                        method=probe.method,
+                        url=probe.url,
+                        expected_status_code=probe.expected_status_code,
+                        status_code=response.status_code,
+                        success=success,
+                    ).inc()
+                    metrics.probe_finished_count.labels(
+                        success=success, protocol=probe.protocol
+                    ).inc()
             case ICMPProbe():
-                metrics.icmp_request_count.add(
-                    1,
-                    {
-                        "icmp.hostname": probe.hostname,
-                    },
-                )
-                ping_host = await async_ping(address=probe.hostname, count=1)
+                metrics.icmp_request_count.labels(hostname=probe.hostname).inc()
+                with metrics.icmp_response_duration_summary.labels(
+                    hostname=probe.hostname
+                ).time():
+                    ping_host = await async_ping(address=probe.hostname, count=1)
                 success = ping_host.is_alive
-                duration = ping_host.max_rtt / 1000  # ms to seconds
+                max_rtt = ping_host.max_rtt / 1000  # ms to seconds
                 CONSOLE.log("ICMP", probe)
-                metrics.icmp_response_count.add(
-                    1,
-                    {
-                        "hostname": probe.hostname,
-                        "success": success,
-                    },
+                metrics.icmp_response_count.labels(
+                    hostname=probe.hostname, success=success
+                ).inc()
+                metrics.icmp_max_rtt_summary.labels(hostname=probe.hostname).observe(
+                    max_rtt
                 )
-                metrics.icmp_response_duration_histogram.record(
-                    duration,
-                    {
-                        "hostname": probe.hostname,
-                        "success": success,
-                    },
-                )
-                metrics.probe_finished_count.add(
-                    1,
-                    {
-                        "success": success,
-                        "protocol": probe.protocol,
-                    },
-                )
+                metrics.probe_finished_count.labels(
+                    success=success, protocol=probe.protocol
+                ).inc()
             case _:
                 raise NotImplementedError(probe)
 
