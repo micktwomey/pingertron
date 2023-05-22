@@ -1,5 +1,5 @@
 import prometheus_client
-from prometheus_client import Counter, Summary, Histogram, Gauge
+from prometheus_client import Counter, Histogram
 
 http_request_count = Counter(
     "http_request_count",
@@ -13,10 +13,10 @@ http_response_count = Counter(
     labelnames=["method", "url", "expected_status_code", "status_code", "success"],
 )
 
-http_response_duration_summary = Summary(
-    "http_response_duration_summary",
+http_response_duration_histogram = Histogram(
+    "http_response_duration_histogram",
     "Histogram of HTTP response durations (seconds)",
-    unit="s",
+    unit="seconds",
     labelnames=["method", "url"],
 )
 
@@ -38,17 +38,17 @@ icmp_response_count = Counter(
     labelnames=["hostname", "success"],
 )
 
-icmp_response_duration_summary = Summary(
-    "icmp_response_duration_summary",
+icmp_response_duration_histogram = Histogram(
+    "icmp_response_duration_histogram",
     "Summary of ICMP response durations (seconds)",
-    unit="s",
+    unit="seconds",
     labelnames=["hostname"],
 )
 
-icmp_max_rtt_summary = Summary(
-    "icmp_max_rtt_summary",
+icmp_max_rtt_histogram = Histogram(
+    "icmp_max_rtt_histogram",
     "Summary of ICMP response max rtt (seconds)",
-    unit="s",
+    unit="seconds",
     labelnames=["hostname"],
 )
 

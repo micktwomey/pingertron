@@ -1,6 +1,5 @@
 import pathlib
 import asyncio
-import time
 from typing import Annotated
 
 import httpx
@@ -31,7 +30,7 @@ async def run_probes(probes: list[Probe]):
 
                 CONSOLE.log("HTTP", probe)
                 async with httpx.AsyncClient() as client:
-                    with metrics.http_response_duration_summary.labels(
+                    with metrics.http_response_duration_histogram.labels(
                         method=probe.method, url=probe.url
                     ).time():
                         response = await client.request(
@@ -51,7 +50,7 @@ async def run_probes(probes: list[Probe]):
                     ).inc()
             case ICMPProbe():
                 metrics.icmp_request_count.labels(hostname=probe.hostname).inc()
-                with metrics.icmp_response_duration_summary.labels(
+                with metrics.icmp_response_duration_histogram.labels(
                     hostname=probe.hostname
                 ).time():
                     ping_host = await async_ping(address=probe.hostname, count=1)
@@ -61,7 +60,7 @@ async def run_probes(probes: list[Probe]):
                 metrics.icmp_response_count.labels(
                     hostname=probe.hostname, success=success
                 ).inc()
-                metrics.icmp_max_rtt_summary.labels(hostname=probe.hostname).observe(
+                metrics.icmp_max_rtt_histogram.labels(hostname=probe.hostname).observe(
                     max_rtt
                 )
                 metrics.probe_finished_count.labels(
