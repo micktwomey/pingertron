@@ -28,7 +28,9 @@ async def run_probes(probes: list[Probe]):
                     expected_status_code=probe.expected_status_code,
                 ).inc()
 
-                CONSOLE.log("HTTP", probe)
+                CONSOLE.log(
+                    f"Sending HTTP {probe.method} to {probe.url} (expecting {probe.expected_status_code})"
+                )
                 async with httpx.AsyncClient() as client:
                     with metrics.http_response_duration_histogram.labels(
                         method=probe.method, url=probe.url
@@ -36,7 +38,9 @@ async def run_probes(probes: list[Probe]):
                         response = await client.request(
                             method=probe.method, url=probe.url
                         )
-                    CONSOLE.log("HTTP Response", response)
+                    CONSOLE.log(
+                        f"Got {response.status_code} from HTTP {probe.method} to {probe.url} (expected {probe.expected_status_code})"
+                    )
                     success = response.status_code == probe.expected_status_code
                     metrics.http_response_count.labels(
                         method=probe.method,
@@ -49,14 +53,17 @@ async def run_probes(probes: list[Probe]):
                         success=success, protocol=probe.protocol
                     ).inc()
             case ICMPProbe():
+                CONSOLE.log(f"Sending ICMP packet to {probe.hostname}")
                 metrics.icmp_request_count.labels(hostname=probe.hostname).inc()
                 with metrics.icmp_response_duration_histogram.labels(
                     hostname=probe.hostname
                 ).time():
                     ping_host = await async_ping(address=probe.hostname, count=1)
+                CONSOLE.log(
+                    f"Got ICMP response from {probe.hostname}: RTT: {ping_host.max_rtt} Alive?: {ping_host.is_alive}"
+                )
                 success = ping_host.is_alive
                 max_rtt = ping_host.max_rtt / 1000  # ms to seconds
-                CONSOLE.log("ICMP", probe)
                 metrics.icmp_response_count.labels(
                     hostname=probe.hostname, success=success
                 ).inc()
@@ -71,9 +78,16 @@ async def run_probes(probes: list[Probe]):
 
 
 async def go(probes_config_path: pathlib.Path):
+    previous_stat = None
+    probes_config = None
     while True:
-        probes_config = parse_yaml_file_as(ProbesConfig, probes_config_path)
-        CONSOLE.log(probes_config)
+        stat = probes_config_path.stat()
+        new_stat = (stat.st_size, stat.st_mtime)
+        if probes_config is None or previous_stat != new_stat:
+            CONSOLE.log(f"(re-)loading probes config from {probes_config_path}")
+            probes_config = parse_yaml_file_as(ProbesConfig, probes_config_path)
+            previous_stat = new_stat
+            CONSOLE.log(probes_config)
         await run_probes(probes_config.probes)
         await asyncio.sleep(probes_config.interval_seconds)
 
