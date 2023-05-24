@@ -1,7 +1,7 @@
 
 # Add a CHANGELOG.md entry, e.g. just changelog-add added "My entry"
 changelog-add TYPE ENTRY:
-    changelog-manager add {{TYPE}} {{ENTRY}}
+    changelog-manager add {{TYPE}} "{{ENTRY}}"
 
 # Find out what your next released version might be based on the changelog.
 next-version:

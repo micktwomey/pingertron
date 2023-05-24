@@ -1,10 +1,13 @@
 import asyncio
+import logging
 import pathlib
 from typing import Annotated
 
 import httpx
 import rich.traceback
 import structlog
+import structlog.contextvars
+import structlog.processors
 import typer
 from icmplib import async_ping
 from pydantic_yaml import parse_yaml_file_as
@@ -30,13 +33,13 @@ async def do_http_probe(probe: HTTPProbe):
         expected_status_code=probe.expected_status_code,
     ).inc()
 
-    log.debug("Sending HTTP request")
+    log.debug("ping")
     async with httpx.AsyncClient() as client:
         with metrics.http_response_duration_histogram.labels(
             method=probe.method, url=probe.url
         ).time():
             response = await client.request(method=probe.method, url=probe.url)
-        log.info("Got HTTP response", status_code=response.status_code)
+        log.debug("ack", status_code=response.status_code)
         success = response.status_code == probe.expected_status_code
         metrics.http_response_count.labels(
             method=probe.method,
@@ -55,14 +58,14 @@ async def do_icmp_probe(probe: ICMPProbe):
         protocol=probe.protocol,
         hostname=probe.hostname,
     )
-    log.debug("Sending ICMP packet")
+    log.debug("ping")
     metrics.icmp_request_count.labels(hostname=probe.hostname).inc()
     with metrics.icmp_response_duration_histogram.labels(
         hostname=probe.hostname
     ).time():
         ping_host = await async_ping(address=probe.hostname, count=1)
-    log.info(
-        "Got ICMP response",
+    log.debug(
+        "ack",
         rtt=ping_host.max_rtt,
         is_alive=ping_host.is_alive,
     )
@@ -97,7 +100,7 @@ async def go(probes_config_path: pathlib.Path):
             LOG.debug("Loading probes config", config_path=probes_config_path)
             probes_config = parse_yaml_file_as(ProbesConfig, probes_config_path)
             previous_stat = new_stat
-            LOG.info("Loaded probes config", config=probes_config)
+            LOG.info("Loaded probes config", config=probes_config.dict())
 
         # Start the sleep at the same time as the probes, aiming to start next batch of
         # probes close to exactly the interval time.
@@ -108,11 +111,17 @@ async def go(probes_config_path: pathlib.Path):
 
 @app.command()
 def main(
-    config: Annotated[pathlib.Path, typer.Argument()],
-    prometheus_exporter_port: int = 8000,
-    use_json_logging: bool = False,
+    config: Annotated[pathlib.Path, typer.Argument(help="Path to probes.yml config")],
+    prometheus_exporter_port: Annotated[
+        int, typer.Option(help="Port to export prometheus metrics on")
+    ] = 8000,
+    use_json_logging: Annotated[
+        bool, typer.Option(help="Output using JSON logging?")
+    ] = False,
+    verbose: Annotated[bool, typer.Option(help="More verbose log output?")] = False,
 ):
     rich.traceback.install(show_locals=True)
+    log_level = logging.DEBUG if verbose else logging.INFO
     if use_json_logging:
         # Configure same processor stack as default, minus dev bits
         structlog.configure(
@@ -122,10 +131,16 @@ def main(
                 structlog.processors.StackInfoRenderer(),
                 structlog.processors.TimeStamper(fmt="iso", utc=True),
                 structlog.processors.JSONRenderer(),
-            ]
+            ],
+            wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        )
+    else:
+        structlog.configure(
+            wrapper_class=structlog.make_filtering_bound_logger(log_level),
         )
 
     metrics.setup_metrics(prometheus_exporter_port=prometheus_exporter_port)
+    LOG.debug(f"Prometheus metrics available on port {prometheus_exporter_port}")
 
     asyncio.run(go(probes_config_path=config))
 
