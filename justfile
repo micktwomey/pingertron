@@ -1,3 +1,4 @@
+project := "pingertron"
 
 # Add a CHANGELOG.md entry, e.g. just changelog-add added "My entry"
 changelog-add TYPE ENTRY:
@@ -29,7 +30,7 @@ do-release:
     git add pyproject.toml CHANGELOG.md
     mkdir -p build
     changelog-manager display --version $VERSION > build/release-notes.md
-    if [ ! -f dist/clone-repo-${VERSION}.tar.gz ]; then
+    if [ ! -f dist/{{project}}-${VERSION}.tar.gz ]; then
         echo "Missing expected file in dist, did you run 'just prepare-release'?"
         exit 1
     fi

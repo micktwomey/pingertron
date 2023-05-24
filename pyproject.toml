@@ -5,6 +5,8 @@ description = "Ping Hosts and URLs and keep stats on successes and failures"
 authors = ["Michael Twomey <mick@twomeylee.name>"]
 license = "MIT"
 readme = "README.md"
+homepage = "https://github.com/micktwomey/pingertron"
+repository = "https://github.com/micktwomey/pingertron"
 
 [tool.poetry.dependencies]
 python = "^3.11"
