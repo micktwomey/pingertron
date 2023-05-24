@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pingertron"
-version = "0.1.0"
+version = "0.2.0"
 description = "Ping Hosts and URLs and keep stats on successes and failures"
 authors = ["Michael Twomey <mick@twomeylee.name>"]
 license = "MIT"
