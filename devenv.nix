@@ -3,6 +3,7 @@
 {
   packages = [
     pkgs.git
+    pkgs.just
     pkgs.prometheus
   ];
 

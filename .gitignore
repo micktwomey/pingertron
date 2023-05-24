@@ -7,3 +7,4 @@ devenv.local.nix
 .venv
 __pycache__
 probes.yaml
+dist
