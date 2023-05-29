@@ -33,4 +33,12 @@
     poetry.package = pkgs.poetry;
     venv.enable = true;
   };
+
+  pre-commit = {
+    # enable = true;
+    hooks = {
+      black.enable = true;
+      ruff.enable = true;
+    };
+  };
 }

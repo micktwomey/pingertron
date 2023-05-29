@@ -3,77 +3,20 @@ import logging
 import pathlib
 from typing import Annotated
 
-import httpx
 import rich.traceback
 import structlog
 import structlog.contextvars
 import structlog.processors
 import typer
-from icmplib import async_ping
 from pydantic_yaml import parse_yaml_file_as
 
 from . import metrics
-from .probes_config import HTTPProbe, ICMPProbe, Probe, ProbesConfig
+from .probes import run_probe
+from .probes_config import Probe, ProbesConfig
 
 app = typer.Typer()
 
 LOG: structlog.stdlib.BoundLogger = structlog.get_logger()
-
-
-async def do_http_probe(probe: HTTPProbe):
-    log = LOG.bind(
-        protocol=probe.protocol,
-        method=probe.method,
-        url=probe.url,
-        expected_status_code=probe.expected_status_code,
-    )
-    metrics.http_request_count.labels(
-        method=probe.method,
-        url=probe.url,
-        expected_status_code=probe.expected_status_code,
-    ).inc()
-
-    log.debug("ping")
-    async with httpx.AsyncClient() as client:
-        with metrics.http_response_duration_histogram.labels(
-            method=probe.method, url=probe.url
-        ).time():
-            response = await client.request(method=probe.method, url=probe.url)
-        log.debug("ack", status_code=response.status_code)
-        success = response.status_code == probe.expected_status_code
-        metrics.http_response_count.labels(
-            method=probe.method,
-            url=probe.url,
-            expected_status_code=probe.expected_status_code,
-            status_code=response.status_code,
-            success=success,
-        ).inc()
-        metrics.probe_finished_count.labels(
-            success=success, protocol=probe.protocol
-        ).inc()
-
-
-async def do_icmp_probe(probe: ICMPProbe):
-    log = LOG.bind(
-        protocol=probe.protocol,
-        hostname=probe.hostname,
-    )
-    log.debug("ping")
-    metrics.icmp_request_count.labels(hostname=probe.hostname).inc()
-    with metrics.icmp_response_duration_histogram.labels(
-        hostname=probe.hostname
-    ).time():
-        ping_host = await async_ping(address=probe.hostname, count=1)
-    log.debug(
-        "ack",
-        rtt=ping_host.max_rtt,
-        is_alive=ping_host.is_alive,
-    )
-    success = ping_host.is_alive
-    max_rtt = ping_host.max_rtt / 1000  # ms to seconds
-    metrics.icmp_response_count.labels(hostname=probe.hostname, success=success).inc()
-    metrics.icmp_max_rtt_histogram.labels(hostname=probe.hostname).observe(max_rtt)
-    metrics.probe_finished_count.labels(success=success, protocol=probe.protocol).inc()
 
 
 async def run_probes(probes: list[Probe]):
@@ -81,13 +24,7 @@ async def run_probes(probes: list[Probe]):
     # (minimum 5 seconds and timeout before next loop)
     async with asyncio.TaskGroup() as group:
         for probe in probes:
-            match probe:
-                case HTTPProbe():
-                    group.create_task(do_http_probe(probe))
-                case ICMPProbe():
-                    group.create_task(do_icmp_probe(probe))
-                case _:
-                    raise NotImplementedError(probe)
+            group.create_task(run_probe(probe))
 
 
 async def go(probes_config_path: pathlib.Path):
