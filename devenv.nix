@@ -34,11 +34,5 @@
     venv.enable = true;
   };
 
-  pre-commit = {
-    # enable = true;
-    hooks = {
-      black.enable = true;
-      ruff.enable = true;
-    };
-  };
+  # Note: I'm not using devenv's pre-commit support as isn't portable
 }
