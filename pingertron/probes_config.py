@@ -6,6 +6,7 @@ import pydantic
 class Protocol(enum.StrEnum):
     http = "http"
     icmp = "icmp"
+    failing = "failing"
 
 
 class HTTPProbe(pydantic.BaseModel):
@@ -22,7 +23,19 @@ class ICMPProbe(pydantic.BaseModel):
     hostname: str
 
 
-Probe = HTTPProbe | ICMPProbe
+class FailureMode(enum.StrEnum):
+    exception = "exception"
+    timeout = "timeout"
+
+
+class FailingProbe(pydantic.BaseModel):
+    protocol: Protocol = Protocol.failing
+    description: str | None
+    failure_rate: float = 0.8
+    failure_mode: FailureMode
+
+
+Probe = HTTPProbe | ICMPProbe | FailingProbe
 
 
 class ProbesConfig(pydantic.BaseModel):
