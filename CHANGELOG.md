@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Add pre-commit
 - Add failing probe for testing error handling
-- Add pre-commit hook
 
 ### Fixed
 - Handle exceptions from probes more gracefully
