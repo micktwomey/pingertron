@@ -34,5 +34,10 @@
     venv.enable = true;
   };
 
+  containers.pingertron = {
+    name = "pingertron";
+    startupCommand = "pingertron probes.yaml";
+  };
+
   # Note: I'm not using devenv's pre-commit support as isn't portable
 }
